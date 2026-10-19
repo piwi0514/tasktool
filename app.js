@@ -324,7 +324,7 @@
         <div class="field"><label>メールアドレス</label><input type="email" id="lg-email" autocomplete="username" required></div>
         <div class="field"><label>パスワード</label><input type="password" id="lg-pass" autocomplete="current-password" required></div>
         <button class="btn" type="submit" style="width:100%">ログイン</button>
-        ${S.loginErr ? `<div class="err">${esc(S.loginErr)}</div>` : ''}
+        ${S.loginErr ? `<div class="err" style="white-space:pre-wrap">${esc(S.loginErr)}</div>` : ''}
       </form></div>`;
   }
 
@@ -546,7 +546,14 @@
           S.loggedIn = true; S.loginErr = '';
           render(); await reload();
         } catch (e) {
-          S.loginErr = 'ログインできませんでした。メールアドレスとパスワードを確認してください。';
+          console.error(e);
+          const raw = String((e && (e.message || e.error_description)) || e);
+          let msg = 'ログインできませんでした。';
+          if (/Invalid login credentials/i.test(raw)) msg += 'メールアドレスかパスワードが違います（Supabaseで作ったユーザーと同じものか確認）。';
+          else if (/Email not confirmed/i.test(raw)) msg += 'ユーザーのメール確認が済んでいません（Supabaseで「Auto Confirm User」をオンにして作り直すか、確認メールのリンクを開く）。';
+          else if (/Invalid API key|apikey|JWT/i.test(raw)) msg += 'config.js の SUPABASE_KEY が違うようです。';
+          else if (/fetch|network|Failed to/i.test(raw)) msg += 'Supabaseにつながりません。config.js の SUPABASE_URL を確認してください。';
+          S.loginErr = `${msg}\n（詳細: ${raw}）`;
           render();
         }
         break;
